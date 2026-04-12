@@ -1,0 +1,141 @@
+@import './tokens.css';
+@import 'tailwindcss';
+
+/* Tailwind v4：将 token 暴露为工具类别名（可选） */
+@theme {
+  --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  --color-aph-text: var(--aph-text);
+  --color-aph-muted: var(--aph-text-muted);
+  --color-aph-surface: var(--aph-surface);
+  --color-aph-primary: var(--aph-primary);
+}
+
+/* 尊重系统「减少动态效果」：缩短动画/过渡（含 list-stagger、路由过渡） */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+html {
+  @apply antialiased;
+  color: var(--aph-text);
+  background-color: var(--aph-bg-base);
+}
+
+/* 极淡径向渐变背景，避免干扰阅读 */
+body {
+  min-height: 100dvh;
+  background-color: var(--aph-bg-base);
+  background-image:
+    radial-gradient(ellipse 100% 60% at 50% -15%, oklch(0.88 0.06 250 / 0.35), transparent 55%),
+    radial-gradient(ellipse 80% 50% at 100% 50%, oklch(0.9 0.04 200 / 0.2), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 0% 80%, oklch(0.92 0.03 280 / 0.25), transparent 45%);
+  background-attachment: fixed;
+}
+
+/* 触控延迟优化（Web） */
+button,
+a,
+[role='button'],
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+/* 全局焦点环：可访问性 */
+:focus-visible {
+  outline: 2px solid var(--aph-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--aph-radius-sm);
+}
+
+/* 列表项 stagger 动画类（减弱动效下由全局规则覆盖） */
+@keyframes aph-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.list-stagger-item {
+  animation: aph-fade-up var(--aph-duration-normal) var(--aph-ease-out) both;
+}
+
+.list-stagger-item:nth-child(1) {
+  animation-delay: 0ms;
+}
+.list-stagger-item:nth-child(2) {
+  animation-delay: 35ms;
+}
+.list-stagger-item:nth-child(3) {
+  animation-delay: 70ms;
+}
+.list-stagger-item:nth-child(4) {
+  animation-delay: 105ms;
+}
+.list-stagger-item:nth-child(5) {
+  animation-delay: 140ms;
+}
+.list-stagger-item:nth-child(6) {
+  animation-delay: 175ms;
+}
+.list-stagger-item:nth-child(7) {
+  animation-delay: 210ms;
+}
+.list-stagger-item:nth-child(8) {
+  animation-delay: 245ms;
+}
+
+/* 表单控件统一外观（各页复用） */
+@layer components {
+  .aph-label {
+    @apply block text-sm font-medium text-[var(--aph-text-muted)];
+  }
+
+  .aph-input {
+    @apply min-h-11 w-full rounded-[var(--aph-radius-md)] border border-[var(--aph-border)] bg-[var(--aph-surface)] px-3 text-base text-[var(--aph-text)] shadow-[var(--aph-shadow-sm)] transition-[border-color,box-shadow] duration-[var(--aph-duration-fast)] ease-out;
+  }
+
+  .aph-input:focus {
+    outline: none;
+    border-color: var(--aph-primary);
+    box-shadow:
+      var(--aph-shadow-sm),
+      0 0 0 3px color-mix(in oklab, var(--aph-primary) 28%, transparent);
+  }
+
+  .aph-select {
+    @apply min-h-11 w-full cursor-pointer rounded-[var(--aph-radius-md)] border border-[var(--aph-border)] bg-[var(--aph-surface)] px-3 text-base text-[var(--aph-text)] shadow-[var(--aph-shadow-sm)] transition-[border-color,box-shadow] duration-[var(--aph-duration-fast)] ease-out;
+  }
+
+  .aph-select:focus {
+    outline: none;
+    border-color: var(--aph-primary);
+    box-shadow:
+      var(--aph-shadow-sm),
+      0 0 0 3px color-mix(in oklab, var(--aph-primary) 28%, transparent);
+  }
+
+  /* 多行文本：与 aph-input 同套 focus，默认等宽便于 Prompt */
+  .aph-textarea {
+    @apply w-full rounded-[var(--aph-radius-md)] border border-[var(--aph-border)] bg-[var(--aph-surface)] px-3 py-2.5 font-mono text-sm leading-relaxed text-[var(--aph-text)] shadow-[var(--aph-shadow-sm)] transition-[border-color,box-shadow] duration-[var(--aph-duration-fast)] ease-out;
+  }
+
+  .aph-textarea:focus {
+    outline: none;
+    border-color: var(--aph-primary);
+    box-shadow:
+      var(--aph-shadow-sm),
+      0 0 0 3px color-mix(in oklab, var(--aph-primary) 28%, transparent);
+  }
+}
