@@ -1,6 +1,6 @@
 const createError = require('http-errors');
 
-const { Op, User } = require('../models');
+const { Op, User, sequelize } = require('../models');
 const { USER_STATUS } = require('../config/constants');
 const { comparePassword, hashPassword } = require('../utils/password');
 const { signToken } = require('../utils/token');
@@ -52,7 +52,14 @@ async function ensureUniqueUserFields({ username, email, phone }, excludeUserId)
 }
 
 async function register(payload) {
-  const { username, email = null, phone = null, password } = payload;
+  const username = payload.username?.trim();
+  const email = (payload.email || '').trim().toLowerCase();
+  const phone = payload.phone ? String(payload.phone).trim() : null;
+  const { password } = payload;
+
+  if (!email) {
+    throw createError(400, '邮箱不能为空');
+  }
 
   await ensureUniqueUserFields({ username, email, phone });
 
@@ -69,17 +76,24 @@ async function register(payload) {
 }
 
 async function login(payload) {
-  const account = payload.account || payload.username;
+  const email = (payload.email || '').trim().toLowerCase();
+
+  if (!email) {
+    throw createError(400, '请填写邮箱');
+  }
 
   const user = await User.unscoped().findOne({
     where: {
       deleted: false,
-      [Op.or]: [{ username: account }, { email: account }, { phone: account }],
+      [Op.and]: sequelize.where(
+        sequelize.fn('LOWER', sequelize.col('email')),
+        email,
+      ),
     },
   });
 
   if (!user) {
-    throw createError(401, '用户名或密码错误');
+    throw createError(401, '邮箱或密码错误');
   }
 
   if (user.status !== USER_STATUS.ACTIVE) {
@@ -89,7 +103,7 @@ async function login(payload) {
   const isPasswordValid = await comparePassword(payload.password, user.password);
 
   if (!isPasswordValid) {
-    throw createError(401, '用户名或密码错误');
+    throw createError(401, '邮箱或密码错误');
   }
 
   const plainUser = user.get({ plain: true });

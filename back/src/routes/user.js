@@ -11,8 +11,13 @@ router.post(
   '/register',
   [
     body('username').trim().notEmpty().withMessage('用户名不能为空').isLength({ min: 2, max: 50 }).withMessage('用户名长度需在2-50之间'),
+    body('email').trim().notEmpty().withMessage('邮箱不能为空').isEmail().withMessage('邮箱格式不正确'),
     body('password').isLength({ min: 6, max: 32 }).withMessage('密码长度需在6-32之间'),
-    body('email').optional({ nullable: true, checkFalsy: true }).isEmail().withMessage('邮箱格式不正确'),
+    body('passwordConfirm')
+      .notEmpty()
+      .withMessage('请再次输入密码')
+      .custom((value, { req }) => value === req.body.password)
+      .withMessage('两次输入的密码不一致'),
     body('phone').optional({ nullable: true, checkFalsy: true }).isLength({ min: 6, max: 20 }).withMessage('手机号格式不正确'),
     validateRequest,
   ],
@@ -22,15 +27,8 @@ router.post(
 router.post(
   '/login',
   [
-    body('username').optional({ nullable: true, checkFalsy: true }).isString(),
-    body('account').optional({ nullable: true, checkFalsy: true }).isString(),
+    body('email').trim().notEmpty().withMessage('邮箱不能为空').isEmail().withMessage('邮箱格式不正确'),
     body('password').notEmpty().withMessage('密码不能为空'),
-    body().custom((value) => {
-      if (!value.username && !value.account) {
-        throw new Error('username 或 account 至少填写一个');
-      }
-      return true;
-    }),
     validateRequest,
   ],
   controller.login,

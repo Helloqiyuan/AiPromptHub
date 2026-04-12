@@ -26,10 +26,11 @@ src/
   services/
   utils/
 scripts/
-  init-db.js
+  init.js                # npm run db:init → 执行 database/tables.sql + data.sql
 database/
-  schema.sql
-  seed.sql
+  README.md
+  tables.sql             # 最终表结构（DDL）
+  data.sql               # 最终种子数据（DML，含 100 条 Prompt）
 ```
 
 ## 已实现模块

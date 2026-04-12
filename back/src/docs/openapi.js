@@ -101,6 +101,10 @@
  *         summary:
  *           type: string
  *           nullable: true
+ *         image:
+ *           type: string
+ *           nullable: true
+ *           description: 封面图 URL（列表/卡片展示）
  *         content:
  *           type: string
  *         usageScenario:
@@ -271,13 +275,16 @@
  *         application/json:
  *           schema:
  *             type: object
- *             required: [username, password]
+ *             required: [username, email, password, passwordConfirm]
  *             properties:
  *               username:
  *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
  *               password:
  *                 type: string
- *               email:
+ *               passwordConfirm:
  *                 type: string
  *               phone:
  *                 type: string
@@ -295,12 +302,11 @@
  *         application/json:
  *           schema:
  *             type: object
- *             required: [password]
+ *             required: [email, password]
  *             properties:
- *               username:
+ *               email:
  *                 type: string
- *               account:
- *                 type: string
+ *                 format: email
  *               password:
  *                 type: string
  *     responses:

@@ -8,6 +8,7 @@ const {
   Tag,
   Prompt,
   Favorite,
+  PromptLike,
   Comment,
 } = require('../models');
 const { PROMPT_STATUS, USER_ROLES } = require('../config/constants');
@@ -73,13 +74,14 @@ async function resolveTagIds(payload, transaction) {
 }
 
 async function refreshPromptCounters(promptId, transaction) {
-  const [favoriteCount, commentCount] = await Promise.all([
+  const [favoriteCount, commentCount, likeCount] = await Promise.all([
     Favorite.count({ where: { promptId, deleted: false }, transaction }),
     Comment.count({ where: { promptId, deleted: false }, transaction }),
+    PromptLike.count({ where: { promptId, deleted: false }, transaction }),
   ]);
 
   await Prompt.update(
-    { favoriteCount, commentCount },
+    { favoriteCount, commentCount, likeCount },
     { where: { id: promptId }, transaction },
   );
 }
@@ -130,19 +132,29 @@ async function attachUserStates(prompts, currentUser) {
 
   const promptIds = prompts.map((item) => item.id);
 
-  const favorites = await Favorite.findAll({
-    where: {
-      userId: currentUser.id,
-      promptId: promptIds,
-      deleted: false,
-    },
-  });
+  const [favorites, likes] = await Promise.all([
+    Favorite.findAll({
+      where: {
+        userId: currentUser.id,
+        promptId: promptIds,
+        deleted: false,
+      },
+    }),
+    PromptLike.findAll({
+      where: {
+        userId: currentUser.id,
+        promptId: promptIds,
+        deleted: false,
+      },
+    }),
+  ]);
 
   const favoriteSet = new Set(favorites.map((item) => Number(item.promptId)));
+  const likeSet = new Set(likes.map((item) => Number(item.promptId)));
 
   return prompts.map((item) => ({
     ...item,
-    liked: false,
+    liked: likeSet.has(Number(item.id)),
     favorited: favoriteSet.has(Number(item.id)),
   }));
 }
@@ -209,6 +221,17 @@ async function listPrompts(query, currentUser) {
 
   if (query.categoryId) {
     where.categoryId = Number(query.categoryId);
+  } else if (query.parentCategoryId) {
+    const children = await Category.findAll({
+      where: {
+        parentId: Number(query.parentCategoryId),
+        deleted: false,
+      },
+      attributes: ['id'],
+    });
+    const ids = children.map((c) => c.id);
+    where.categoryId =
+      ids.length > 0 ? { [Op.in]: ids } : { [Op.in]: [-1] };
   }
 
   if (query.userId) {
@@ -248,6 +271,7 @@ async function createPrompt(payload, currentUser) {
       {
         title: payload.title,
         summary: payload.summary || null,
+        image: payload.image || null,
         content: payload.content,
         usageScenario: payload.usageScenario || null,
         exampleInput: payload.exampleInput || null,
@@ -293,6 +317,10 @@ async function updatePrompt(promptId, payload, currentUser) {
       {
         title: payload.title ?? prompt.title,
         summary: payload.summary ?? prompt.summary,
+        image:
+          Object.prototype.hasOwnProperty.call(payload, 'image')
+            ? payload.image || null
+            : prompt.image,
         content: payload.content ?? prompt.content,
         usageScenario: payload.usageScenario ?? prompt.usageScenario,
         exampleInput: payload.exampleInput ?? prompt.exampleInput,
@@ -355,6 +383,7 @@ async function toggleFavorite(promptId, currentUser) {
       transaction,
     });
 
+    let favorited;
     if (!favorite) {
       await Favorite.create(
         {
@@ -364,18 +393,70 @@ async function toggleFavorite(promptId, currentUser) {
         },
         { transaction },
       );
+      favorited = true;
     } else {
       await favorite.update({ deleted: !favorite.deleted }, { transaction });
+      await favorite.reload({ transaction });
+      favorited = !favorite.deleted;
     }
 
     await refreshPromptCounters(promptId, transaction);
     await prompt.reload({ transaction });
 
-    const active = !favorite || favorite.deleted;
+    return {
+      favorited,
+      favoriteCount: prompt.favoriteCount,
+    };
+  });
+}
+
+/** 切换点赞：无记录则插入，有记录则软删切换，并刷新 prompt.like_count */
+async function toggleLike(promptId, currentUser) {
+  return sequelize.transaction(async (transaction) => {
+    const prompt = await Prompt.findOne({
+      where: {
+        id: promptId,
+        deleted: false,
+        status: PROMPT_STATUS.PUBLISHED,
+      },
+      transaction,
+    });
+
+    if (!prompt) {
+      throw createError(404, 'Prompt不存在');
+    }
+
+    const row = await PromptLike.findOne({
+      where: {
+        promptId,
+        userId: currentUser.id,
+      },
+      transaction,
+    });
+
+    let liked;
+    if (!row) {
+      await PromptLike.create(
+        {
+          promptId,
+          userId: currentUser.id,
+          deleted: false,
+        },
+        { transaction },
+      );
+      liked = true;
+    } else {
+      await row.update({ deleted: !row.deleted }, { transaction });
+      await row.reload({ transaction });
+      liked = !row.deleted;
+    }
+
+    await refreshPromptCounters(promptId, transaction);
+    await prompt.reload({ transaction });
 
     return {
-      favorited: active,
-      favoriteCount: prompt.favoriteCount,
+      liked,
+      likeCount: prompt.likeCount,
     };
   });
 }
@@ -461,6 +542,7 @@ module.exports = {
   updatePrompt,
   deletePrompt,
   toggleFavorite,
+  toggleLike,
   listFavoritePrompts,
   reviewPrompt,
   listAdminPrompts,

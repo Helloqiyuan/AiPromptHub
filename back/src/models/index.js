@@ -183,6 +183,10 @@ const Prompt = sequelize.define(
       type: DataTypes.STRING(255),
       allowNull: true,
     },
+    image: {
+      type: DataTypes.STRING(512),
+      allowNull: true,
+    },
     content: {
       type: DataTypes.TEXT('long'),
       allowNull: false,
@@ -313,6 +317,47 @@ const Favorite = sequelize.define(
   },
 );
 
+const PromptLike = sequelize.define(
+  'PromptLike',
+  {
+    id: {
+      type: DataTypes.BIGINT.UNSIGNED,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    promptId: {
+      type: DataTypes.BIGINT.UNSIGNED,
+      allowNull: false,
+    },
+    userId: {
+      type: DataTypes.BIGINT.UNSIGNED,
+      allowNull: false,
+    },
+    deleted: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    createBy: {
+      type: DataTypes.BIGINT.UNSIGNED,
+      allowNull: true,
+    },
+    deletedBy: {
+      type: DataTypes.BIGINT.UNSIGNED,
+      allowNull: true,
+    },
+  },
+  {
+    tableName: 'prompt_like',
+    indexes: [
+      { unique: true, fields: ['prompt_id', 'user_id'] },
+      { fields: ['prompt_id'] },
+      { fields: ['user_id'] },
+      { fields: ['deleted'] },
+    ],
+  },
+);
+
 const Comment = sequelize.define(
   'Comment',
   {
@@ -394,6 +439,11 @@ Favorite.belongsTo(Prompt, { foreignKey: 'promptId', as: 'prompt', constraints: 
 User.hasMany(Favorite, { foreignKey: 'userId', as: 'favorites', constraints: false });
 Favorite.belongsTo(User, { foreignKey: 'userId', as: 'user', constraints: false });
 
+Prompt.hasMany(PromptLike, { foreignKey: 'promptId', as: 'promptLikes', constraints: false });
+PromptLike.belongsTo(Prompt, { foreignKey: 'promptId', as: 'prompt', constraints: false });
+User.hasMany(PromptLike, { foreignKey: 'userId', as: 'promptLikes', constraints: false });
+PromptLike.belongsTo(User, { foreignKey: 'userId', as: 'user', constraints: false });
+
 Prompt.hasMany(Comment, { foreignKey: 'promptId', as: 'comments', constraints: false });
 Comment.belongsTo(Prompt, { foreignKey: 'promptId', as: 'prompt', constraints: false });
 User.hasMany(Comment, { foreignKey: 'userId', as: 'comments', constraints: false });
@@ -409,5 +459,6 @@ module.exports = {
   Prompt,
   PromptTag,
   Favorite,
+  PromptLike,
   Comment,
 };

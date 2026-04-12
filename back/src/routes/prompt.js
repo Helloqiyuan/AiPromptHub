@@ -3,16 +3,21 @@ const { body, param, query } = require('express-validator');
 
 const controller = require('../controllers/promptController');
 const validateRequest = require('../middlewares/validateRequest');
-const { authenticate } = require('../middlewares/auth');
+const { authenticate, optionalAuthenticate } = require('../middlewares/auth');
 
 const router = express.Router();
 
 router.get(
   '/',
   [
+    optionalAuthenticate,
     query('page').optional().isInt({ min: 1 }).withMessage('page必须为正整数'),
     query('pageSize').optional().isInt({ min: 1, max: 50 }).withMessage('pageSize必须在1-50之间'),
     query('tagId').optional().isInt({ min: 1 }).withMessage('标签ID不合法'),
+    query('parentCategoryId')
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage('父分类ID不合法'),
     validateRequest,
   ],
   controller.listPrompts,
@@ -20,7 +25,11 @@ router.get(
 
 router.get(
   '/:id',
-  [param('id').isInt({ min: 1 }).withMessage('Prompt ID不合法'), validateRequest],
+  [
+    optionalAuthenticate,
+    param('id').isInt({ min: 1 }).withMessage('Prompt ID不合法'),
+    validateRequest,
+  ],
   controller.getPromptDetail,
 );
 
@@ -31,6 +40,10 @@ router.post(
     body('title').trim().notEmpty().withMessage('标题不能为空').isLength({ max: 150 }).withMessage('标题长度不能超过150'),
     body('content').trim().notEmpty().withMessage('内容不能为空'),
     body('summary').optional({ nullable: true }).isLength({ max: 255 }).withMessage('摘要长度不能超过255'),
+    body('image')
+      .optional({ nullable: true })
+      .isLength({ max: 512 })
+      .withMessage('封面图 URL 长度不能超过512'),
     body('usageScenario').optional({ nullable: true }).isLength({ max: 255 }).withMessage('使用场景长度不能超过255'),
     body('categoryId').optional().isInt({ min: 1 }).withMessage('分类ID不合法'),
     body('tagIds').optional().isArray().withMessage('tagIds须为数组'),
@@ -54,6 +67,10 @@ router.put(
   [
     param('id').isInt({ min: 1 }).withMessage('Prompt ID不合法'),
     body('title').optional().trim().isLength({ min: 1, max: 150 }).withMessage('标题长度需在1-150之间'),
+    body('image')
+      .optional({ nullable: true })
+      .isLength({ max: 512 })
+      .withMessage('封面图 URL 长度不能超过512'),
     body('categoryId').optional().isInt({ min: 1 }).withMessage('分类ID不合法'),
     body('tagIds').optional().isArray().withMessage('tagIds须为数组'),
     body('tagIds.*').optional().isInt({ min: 1 }).withMessage('标签ID不合法'),
@@ -82,6 +99,13 @@ router.post(
   authenticate,
   [param('id').isInt({ min: 1 }).withMessage('Prompt ID不合法'), validateRequest],
   controller.toggleFavorite,
+);
+
+router.post(
+  '/:id/likes/toggle',
+  authenticate,
+  [param('id').isInt({ min: 1 }).withMessage('Prompt ID不合法'), validateRequest],
+  controller.toggleLike,
 );
 
 module.exports = router;

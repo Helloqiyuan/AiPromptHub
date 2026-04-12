@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "db:init": "node scripts/init-db.js",
-    "db:seed-demo": "node scripts/seed-demo-prompts.js"
+    "db:init": "node scripts/init.js"
   },
   "keywords": [
     "express",

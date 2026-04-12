@@ -69,8 +69,35 @@ function authorizeSuperAdmin(req, res, next) {
   return authorize(USER_ROLES.SUPER_ADMIN)(req, res, next);
 }
 
+/**
+ * 若请求携带合法 Bearer，则设置 req.user；否则继续（不报错）。用于 GET 列表/详情返回 liked/favorited。
+ */
+async function optionalAuthenticate(req, res, next) {
+  try {
+    const authorization = req.headers.authorization || '';
+    const [scheme, token] = authorization.split(' ');
+    if (scheme !== 'Bearer' || !token) {
+      return next();
+    }
+    const payload = jwt.verify(token, env.jwtSecret);
+    const user = await User.findOne({
+      where: {
+        id: payload.userId,
+        deleted: false,
+      },
+    });
+    if (user && user.status === USER_STATUS.ACTIVE) {
+      req.user = user;
+    }
+  } catch {
+    // 忽略无效或过期 token
+  }
+  next();
+}
+
 module.exports = {
   authenticate,
+  optionalAuthenticate,
   authorize,
   authorizeAdmin,
   authorizeSuperAdmin,

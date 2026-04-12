@@ -1,7 +1,8 @@
 -- =============================================================================
--- AiPromptHub 数据库结构
--- 字符集：utf8mb4（兼容 emoji 与多语言）；排序：utf8mb4_bin（区分大小写）
--- 说明：业务表（user / category / tag / prompt / favorite / comment / prompt_like）
+-- AiPromptHub — 表结构（DDL only，与 data.sql 分离）
+-- 字符集：utf8mb4；排序：utf8mb4_bin
+-- 表：user / category / tag / prompt / prompt_tag / favorite / comment / prompt_like
+-- 初始化顺序：先执行本文件，再执行 data.sql（npm run db:init 已按序执行）
 -- =============================================================================
 
 CREATE DATABASE IF NOT EXISTS `ai_prompt_hub`
@@ -90,6 +91,7 @@ CREATE TABLE IF NOT EXISTS `prompt` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键，自增 Prompt ID',
   `title` VARCHAR(150) NOT NULL COMMENT '标题',
   `summary` VARCHAR(255) NULL COMMENT '摘要，列表展示用',
+  `image` VARCHAR(512) NULL COMMENT '封面图 URL，列表/卡片展示用',
   `content` LONGTEXT NOT NULL COMMENT '正文（完整提示词内容）',
   `usage_scenario` VARCHAR(255) NULL COMMENT '适用场景说明',
   `example_input` TEXT NULL COMMENT '示例输入',
