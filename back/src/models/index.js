@@ -167,47 +167,6 @@ const Tag = sequelize.define(
   },
 );
 
-const AiModel = sequelize.define(
-  'AiModel',
-  {
-    id: {
-      type: DataTypes.BIGINT.UNSIGNED,
-      primaryKey: true,
-      autoIncrement: true,
-    },
-    name: {
-      type: DataTypes.STRING(50),
-      allowNull: false,
-      unique: true,
-    },
-    vendor: {
-      type: DataTypes.STRING(50),
-      allowNull: true,
-    },
-    description: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-    },
-    deleted: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
-    createBy: {
-      type: DataTypes.BIGINT.UNSIGNED,
-      allowNull: true,
-    },
-    deletedBy: {
-      type: DataTypes.BIGINT.UNSIGNED,
-      allowNull: true,
-    },
-  },
-  {
-    tableName: 'ai_model',
-    indexes: [{ unique: true, fields: ['name'] }, { fields: ['deleted'] }],
-  },
-);
-
 const Prompt = sequelize.define(
   'Prompt',
   {
@@ -294,127 +253,22 @@ const Prompt = sequelize.define(
   },
 );
 
+/** 中间表：prompt 与 tag 多对多（表名 prompt_tag，复合主键） */
 const PromptTag = sequelize.define(
   'PromptTag',
   {
-    id: {
-      type: DataTypes.BIGINT.UNSIGNED,
-      primaryKey: true,
-      autoIncrement: true,
-    },
     promptId: {
       type: DataTypes.BIGINT.UNSIGNED,
-      allowNull: false,
+      primaryKey: true,
     },
     tagId: {
       type: DataTypes.BIGINT.UNSIGNED,
-      allowNull: false,
-    },
-    deleted: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
-    createBy: {
-      type: DataTypes.BIGINT.UNSIGNED,
-      allowNull: true,
-    },
-    deletedBy: {
-      type: DataTypes.BIGINT.UNSIGNED,
-      allowNull: true,
+      primaryKey: true,
     },
   },
   {
     tableName: 'prompt_tag',
-    indexes: [
-      { unique: true, fields: ['prompt_id', 'tag_id'] },
-      { fields: ['prompt_id'] },
-      { fields: ['tag_id'] },
-      { fields: ['deleted'] },
-    ],
-  },
-);
-
-const PromptModel = sequelize.define(
-  'PromptModel',
-  {
-    id: {
-      type: DataTypes.BIGINT.UNSIGNED,
-      primaryKey: true,
-      autoIncrement: true,
-    },
-    promptId: {
-      type: DataTypes.BIGINT.UNSIGNED,
-      allowNull: false,
-    },
-    modelId: {
-      type: DataTypes.BIGINT.UNSIGNED,
-      allowNull: false,
-      field: 'model_id',
-    },
-    deleted: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
-    createBy: {
-      type: DataTypes.BIGINT.UNSIGNED,
-      allowNull: true,
-    },
-    deletedBy: {
-      type: DataTypes.BIGINT.UNSIGNED,
-      allowNull: true,
-    },
-  },
-  {
-    tableName: 'prompt_model',
-    indexes: [
-      { unique: true, fields: ['prompt_id', 'model_id'] },
-      { fields: ['prompt_id'] },
-      { fields: ['model_id'] },
-      { fields: ['deleted'] },
-    ],
-  },
-);
-
-const PromptLike = sequelize.define(
-  'PromptLike',
-  {
-    id: {
-      type: DataTypes.BIGINT.UNSIGNED,
-      primaryKey: true,
-      autoIncrement: true,
-    },
-    promptId: {
-      type: DataTypes.BIGINT.UNSIGNED,
-      allowNull: false,
-    },
-    userId: {
-      type: DataTypes.BIGINT.UNSIGNED,
-      allowNull: false,
-    },
-    deleted: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
-    createBy: {
-      type: DataTypes.BIGINT.UNSIGNED,
-      allowNull: true,
-    },
-    deletedBy: {
-      type: DataTypes.BIGINT.UNSIGNED,
-      allowNull: true,
-    },
-  },
-  {
-    tableName: 'prompt_like',
-    indexes: [
-      { unique: true, fields: ['prompt_id', 'user_id'] },
-      { fields: ['prompt_id'] },
-      { fields: ['user_id'] },
-      { fields: ['deleted'] },
-    ],
+    timestamps: false,
   },
 );
 
@@ -535,26 +389,6 @@ Tag.belongsToMany(Prompt, {
   constraints: false,
 });
 
-Prompt.belongsToMany(AiModel, {
-  through: PromptModel,
-  foreignKey: 'promptId',
-  otherKey: 'modelId',
-  as: 'models',
-  constraints: false,
-});
-AiModel.belongsToMany(Prompt, {
-  through: PromptModel,
-  foreignKey: 'modelId',
-  otherKey: 'promptId',
-  as: 'prompts',
-  constraints: false,
-});
-
-Prompt.hasMany(PromptLike, { foreignKey: 'promptId', as: 'likes', constraints: false });
-PromptLike.belongsTo(Prompt, { foreignKey: 'promptId', as: 'prompt', constraints: false });
-User.hasMany(PromptLike, { foreignKey: 'userId', as: 'promptLikes', constraints: false });
-PromptLike.belongsTo(User, { foreignKey: 'userId', as: 'user', constraints: false });
-
 Prompt.hasMany(Favorite, { foreignKey: 'promptId', as: 'favorites', constraints: false });
 Favorite.belongsTo(Prompt, { foreignKey: 'promptId', as: 'prompt', constraints: false });
 User.hasMany(Favorite, { foreignKey: 'userId', as: 'favorites', constraints: false });
@@ -572,11 +406,8 @@ module.exports = {
   User,
   Category,
   Tag,
-  AiModel,
   Prompt,
   PromptTag,
-  PromptModel,
-  PromptLike,
   Favorite,
   Comment,
 };

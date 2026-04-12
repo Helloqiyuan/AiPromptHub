@@ -6,11 +6,7 @@ const {
   User,
   Category,
   Tag,
-  AiModel,
   Prompt,
-  PromptTag,
-  PromptModel,
-  PromptLike,
   Favorite,
   Comment,
 } = require('../models');
@@ -44,130 +40,53 @@ async function ensureDefaultCategory(transaction) {
   return category.id;
 }
 
-async function resolveTags(input = [], transaction) {
-  const tagIds = new Set();
-
-  for (const item of input) {
-    if (typeof item === 'number') {
-      tagIds.add(item);
-      continue;
-    }
-
-    if (typeof item === 'string' && item.trim()) {
-      const [tag] = await Tag.findOrCreate({
-        where: { name: item.trim() },
-        defaults: { deleted: false },
-        transaction,
-      });
-
-      if (tag.deleted) {
-        await tag.update({ deleted: false }, { transaction });
-      }
-
-      tagIds.add(Number(tag.id));
-    }
+/**
+ * 从 body 解析标签 id 列表：支持 tagIds 数组或兼容单字段 tagId；全部须为未删除的 tag
+ */
+async function resolveTagIds(payload, transaction) {
+  let raw = [];
+  if (Array.isArray(payload.tagIds)) {
+    raw = payload.tagIds;
+  } else if (
+    Object.prototype.hasOwnProperty.call(payload, 'tagId') &&
+    payload.tagId !== undefined &&
+    payload.tagId !== null &&
+    payload.tagId !== ''
+  ) {
+    raw = [payload.tagId];
   }
-
-  return Array.from(tagIds);
-}
-
-async function resolveModels(input = [], transaction) {
-  const modelIds = new Set();
-
-  for (const item of input) {
-    if (typeof item === 'number') {
-      modelIds.add(item);
-      continue;
-    }
-
-    if (typeof item === 'string' && item.trim()) {
-      const [model] = await AiModel.findOrCreate({
-        where: { name: item.trim() },
-        defaults: { deleted: false },
-        transaction,
-      });
-
-      if (model.deleted) {
-        await model.update({ deleted: false }, { transaction });
-      }
-
-      modelIds.add(Number(model.id));
-    }
+  if (!raw.length) {
+    return [];
   }
-
-  return Array.from(modelIds);
-}
-
-async function syncPromptRelations(promptId, { tags = [], modelIds = [], tagIds = [], modelNames = [] }, transaction) {
-  const normalizedTagIds = await resolveTags([...tagIds, ...tags], transaction);
-  const normalizedModelIds = await resolveModels([...modelIds, ...modelNames], transaction);
-
-  await PromptTag.update(
-    { deleted: true },
-    {
-      where: { promptId },
-      transaction,
-    },
-  );
-
-  await PromptModel.update(
-    { deleted: true },
-    {
-      where: { promptId },
-      transaction,
-    },
-  );
-
-  if (normalizedTagIds.length) {
-    await PromptTag.bulkCreate(
-      normalizedTagIds.map((tagId) => ({
-        promptId,
-        tagId,
-        deleted: false,
-      })),
-      {
-        updateOnDuplicate: ['deleted', 'update_time'],
-        transaction,
-      },
-    );
+  const ids = [...new Set(raw.map((v) => Number(v)))];
+  if (ids.some((n) => !Number.isInteger(n) || n < 1)) {
+    throw createError(400, '标签ID不合法');
   }
-
-  if (normalizedModelIds.length) {
-    await PromptModel.bulkCreate(
-      normalizedModelIds.map((modelId) => ({
-        promptId,
-        modelId,
-        deleted: false,
-      })),
-      {
-        updateOnDuplicate: ['deleted', 'update_time'],
-        transaction,
-      },
-    );
+  const tags = await Tag.findAll({
+    where: { id: ids, deleted: false },
+    transaction,
+  });
+  if (tags.length !== ids.length) {
+    throw createError(400, '标签不存在或已删除');
   }
+  return ids;
 }
 
 async function refreshPromptCounters(promptId, transaction) {
-  const [likeCount, favoriteCount, commentCount] = await Promise.all([
-    PromptLike.count({ where: { promptId, deleted: false }, transaction }),
+  const [favoriteCount, commentCount] = await Promise.all([
     Favorite.count({ where: { promptId, deleted: false }, transaction }),
     Comment.count({ where: { promptId, deleted: false }, transaction }),
   ]);
 
   await Prompt.update(
-    {
-      likeCount,
-      favoriteCount,
-      commentCount,
-    },
-    {
-      where: { id: promptId },
-      transaction,
-    },
+    { favoriteCount, commentCount },
+    { where: { id: promptId }, transaction },
   );
 }
 
-function buildPromptInclude({ tagId, modelId } = {}) {
+/** 列表/详情关联查询；filterTagId 有值时仅返回包含该标签的 Prompt（INNER JOIN 标签） */
+function buildPromptInclude(options = {}) {
+  const filterTagId = options.filterTagId ? Number(options.filterTagId) : null;
   return [
     {
       model: User,
@@ -181,7 +100,7 @@ function buildPromptInclude({ tagId, modelId } = {}) {
     {
       model: Category,
       as: 'category',
-      attributes: ['id', 'name', 'description'],
+      attributes: ['id', 'name', 'description', 'parentId', 'sort'],
       where: {
         deleted: false,
       },
@@ -190,28 +109,12 @@ function buildPromptInclude({ tagId, modelId } = {}) {
     {
       model: Tag,
       as: 'tags',
-      attributes: ['id', 'name'],
-      through: {
-        attributes: [],
-        where: {
-          deleted: false,
-        },
-      },
-      where: tagId ? { id: Number(tagId), deleted: false } : undefined,
-      required: Boolean(tagId),
-    },
-    {
-      model: AiModel,
-      as: 'models',
-      attributes: ['id', 'name', 'vendor'],
-      through: {
-        attributes: [],
-        where: {
-          deleted: false,
-        },
-      },
-      where: modelId ? { id: Number(modelId), deleted: false } : undefined,
-      required: Boolean(modelId),
+      attributes: ['id', 'name', 'deleted'],
+      through: { attributes: [] },
+      required: Boolean(filterTagId),
+      ...(filterTagId
+        ? { where: { id: filterTagId, deleted: false } }
+        : {}),
     },
   ];
 }
@@ -227,40 +130,38 @@ async function attachUserStates(prompts, currentUser) {
 
   const promptIds = prompts.map((item) => item.id);
 
-  const [likes, favorites] = await Promise.all([
-    PromptLike.findAll({
-      where: {
-        userId: currentUser.id,
-        promptId: promptIds,
-        deleted: false,
-      },
-    }),
-    Favorite.findAll({
-      where: {
-        userId: currentUser.id,
-        promptId: promptIds,
-        deleted: false,
-      },
-    }),
-  ]);
+  const favorites = await Favorite.findAll({
+    where: {
+      userId: currentUser.id,
+      promptId: promptIds,
+      deleted: false,
+    },
+  });
 
-  const likeSet = new Set(likes.map((item) => Number(item.promptId)));
   const favoriteSet = new Set(favorites.map((item) => Number(item.promptId)));
 
   return prompts.map((item) => ({
     ...item,
-    liked: likeSet.has(Number(item.id)),
+    liked: false,
     favorited: favoriteSet.has(Number(item.id)),
   }));
 }
 
 function normalizePromptPayload(prompt) {
   const plain = prompt.get ? prompt.get({ plain: true }) : prompt;
+  const { tags: tagRows, ...rest } = plain;
+  const tags = Array.isArray(tagRows)
+    ? tagRows
+        .filter((t) => t && !t.deleted)
+        .map((t) => ({ id: t.id, name: t.name }))
+    : [];
+  const tagLite = tags[0] ?? null;
 
   return {
-    ...plain,
-    tags: plain.tags || [],
-    models: plain.models || [],
+    ...rest,
+    tag: tagLite,
+    tags,
+    models: [],
   };
 }
 
@@ -324,10 +225,7 @@ async function listPrompts(query, currentUser) {
 
   const result = await Prompt.findAndCountAll({
     where,
-    include: buildPromptInclude({
-      tagId: query.tagId,
-      modelId: query.modelId,
-    }),
+    include: buildPromptInclude({ filterTagId: query.tagId }),
     order: [['createTime', 'DESC']],
     limit,
     offset,
@@ -344,6 +242,8 @@ async function createPrompt(payload, currentUser) {
       ? Number(payload.categoryId)
       : await ensureDefaultCategory(transaction);
 
+    const tagIds = await resolveTagIds(payload, transaction);
+
     const prompt = await Prompt.create(
       {
         title: payload.title,
@@ -359,16 +259,9 @@ async function createPrompt(payload, currentUser) {
       { transaction },
     );
 
-    await syncPromptRelations(
-      prompt.id,
-      {
-        tags: payload.tags,
-        tagIds: payload.tagIds,
-        modelIds: payload.modelIds,
-        modelNames: payload.modelNames,
-      },
-      transaction,
-    );
+    if (tagIds.length) {
+      await prompt.setTags(tagIds, { transaction });
+    }
 
     return getPromptById(prompt.id, currentUser, { transaction, allowAdminDraft: true });
   });
@@ -392,6 +285,10 @@ async function updatePrompt(promptId, payload, currentUser) {
       throw createError(403, '没有修改该Prompt的权限');
     }
 
+    const shouldSyncTags =
+      Object.prototype.hasOwnProperty.call(payload, 'tagIds') ||
+      Object.prototype.hasOwnProperty.call(payload, 'tagId');
+
     await prompt.update(
       {
         title: payload.title ?? prompt.title,
@@ -406,17 +303,9 @@ async function updatePrompt(promptId, payload, currentUser) {
       { transaction },
     );
 
-    if (payload.tags || payload.tagIds || payload.modelIds || payload.modelNames) {
-      await syncPromptRelations(
-        prompt.id,
-        {
-          tags: payload.tags,
-          tagIds: payload.tagIds,
-          modelIds: payload.modelIds,
-          modelNames: payload.modelNames,
-        },
-        transaction,
-      );
+    if (shouldSyncTags) {
+      const nextIds = await resolveTagIds(payload, transaction);
+      await prompt.setTags(nextIds, { transaction });
     }
 
     return getPromptById(prompt.id, currentUser, { transaction, allowAdminDraft: true });
@@ -441,54 +330,6 @@ async function deletePrompt(promptId, currentUser) {
 
   await prompt.update({ deleted: true });
   return { id: promptId };
-}
-
-async function togglePromptLike(promptId, currentUser) {
-  return sequelize.transaction(async (transaction) => {
-    const prompt = await Prompt.findOne({
-      where: {
-        id: promptId,
-        deleted: false,
-        status: PROMPT_STATUS.PUBLISHED,
-      },
-      transaction,
-    });
-
-    if (!prompt) {
-      throw createError(404, 'Prompt不存在');
-    }
-
-    const like = await PromptLike.findOne({
-      where: {
-        promptId,
-        userId: currentUser.id,
-      },
-      transaction,
-    });
-
-    if (!like) {
-      await PromptLike.create(
-        {
-          promptId,
-          userId: currentUser.id,
-          deleted: false,
-        },
-        { transaction },
-      );
-    } else {
-      await like.update({ deleted: !like.deleted }, { transaction });
-    }
-
-    await refreshPromptCounters(promptId, transaction);
-    await prompt.reload({ transaction });
-
-    const active = !like || like.deleted;
-
-    return {
-      liked: active,
-      likeCount: prompt.likeCount,
-    };
-  });
 }
 
 async function toggleFavorite(promptId, currentUser) {
@@ -598,18 +439,18 @@ async function listAdminPrompts(query) {
 }
 
 async function getPromptStats() {
-  const [promptCount, commentCount, favoriteCount, likeCount] = await Promise.all([
+  const [promptCount, commentCount, favoriteCount, likeSum] = await Promise.all([
     Prompt.count({ where: { deleted: false } }),
     Comment.count({ where: { deleted: false } }),
     Favorite.count({ where: { deleted: false } }),
-    PromptLike.count({ where: { deleted: false } }),
+    Prompt.sum('likeCount', { where: { deleted: false } }),
   ]);
 
   return {
     promptCount,
     commentCount,
     favoriteCount,
-    likeCount,
+    likeCount: Number(likeSum) || 0,
   };
 }
 
@@ -619,7 +460,6 @@ module.exports = {
   createPrompt,
   updatePrompt,
   deletePrompt,
-  togglePromptLike,
   toggleFavorite,
   listFavoritePrompts,
   reviewPrompt,
@@ -628,4 +468,3 @@ module.exports = {
   canManagePrompt,
   refreshPromptCounters,
 };
-

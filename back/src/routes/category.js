@@ -9,7 +9,6 @@ const router = express.Router();
 
 router.get('/categories', controller.listCategories);
 router.get('/tags', controller.listTags);
-router.get('/models', controller.listModels);
 
 router.post(
   '/categories',

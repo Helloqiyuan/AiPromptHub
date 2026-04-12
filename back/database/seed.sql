@@ -15,26 +15,51 @@ ON DUPLICATE KEY UPDATE
   `sort` = VALUES(`sort`),
   `deleted` = 0;
 
-INSERT INTO `ai_model` (`name`, `vendor`, `description`)
+-- 三级分类：各二级类下的代表性模型/产品名（仅写 category 表，name 全局唯一）
+-- 命名参考各厂商公开产品线（OpenAI / Anthropic / Google / 开源与垂直场景等）
+INSERT INTO `category` (`id`, `name`, `description`, `parent_id`, `sort`)
 VALUES
-  ('GPT-4o', 'OpenAI', '通用多模态模型'),
-  ('GPT-4.1', 'OpenAI', '偏向复杂推理与代码'),
-  ('Claude 3.5 Sonnet', 'Anthropic', '偏向稳定写作与分析'),
-  ('DeepSeek-V3', 'DeepSeek', '中文能力较强'),
-  ('Qwen2.5', 'Alibaba', '通用中文模型')
+  (7, 'GPT-5.4', 'OpenAI 旗舰：对话、长文与工具调用（2026 公开路线）', 2, 10),
+  (8, 'Claude Opus 4.6', 'Anthropic 旗舰：长上下文写作与复杂推理', 2, 20),
+  (9, 'Gemini 2.5 Pro', 'Google：多模态与超长上下文文本任务', 2, 30),
+  (10, 'DeepSeek-V3', 'DeepSeek：中文与代码混合场景文本生成', 2, 40),
+  (11, 'Qwen3-Max', '阿里通义：中文写作与知识问答', 2, 50),
+  (12, 'DALL·E 3', 'OpenAI 文生图与指令遵循', 3, 10),
+  (13, 'Midjourney V7', 'Midjourney 高质量艺术与风格化图像', 3, 20),
+  (14, 'Stable Diffusion 3.5', 'Stability AI 开源可控文生图管线', 3, 30),
+  (15, 'Flux.1 Pro', 'Black Forest Labs 高细节文生图', 3, 40),
+  (16, 'Imagen 3', 'Google 写实与产品图方向', 3, 50),
+  (17, 'ElevenLabs Turbo v3', '多语种神经语音合成（TTS）', 4, 10),
+  (18, 'Suno v4', 'AI 歌曲与编曲生成', 4, 20),
+  (19, 'Udio', '人声与音乐生成创作', 4, 30),
+  (20, 'AudioCraft 2', 'Meta 音频生成工具链（音乐/音效）', 4, 40),
+  (21, 'Bark v2', 'Suno 系多语言语音合成与音效', 4, 50),
+  (22, 'Sora 2', 'OpenAI 文生视频与镜头语言', 5, 10),
+  (23, 'Runway Gen-4', 'Runway 视频生成与编辑工作流', 5, 20),
+  (24, 'Kling 2.1', '可灵：中文短视频与镜头运动', 5, 30),
+  (25, 'Luma Ray3', 'Luma Dream Machine 系列文生视频', 5, 40),
+  (26, 'Pika 2.0', 'Pika：短视频与风格化生成', 5, 50),
+  (27, 'GPT-5.4-Codex', 'OpenAI 代码智能体与仓库级任务（对标 Codex 产品线）', 6, 10),
+  (28, 'Claude Sonnet 4.5 Dev', 'Anthropic：终端与 SWE 向代码任务', 6, 20),
+  (29, 'Gemini 2.5 Code Assist', 'Google：IDE 与 Cloud 代码助手向能力', 6, 30),
+  (30, 'DeepSeek-Coder-V2', 'DeepSeek 代码补全与仓库理解', 6, 40),
+  (31, 'GitHub Copilot Agent', 'GitHub：编辑器与 Agent 式编码工作流', 6, 50)
 ON DUPLICATE KEY UPDATE
-  `vendor` = VALUES(`vendor`),
+  `name` = VALUES(`name`),
   `description` = VALUES(`description`),
+  `parent_id` = VALUES(`parent_id`),
+  `sort` = VALUES(`sort`),
   `deleted` = 0;
 
-INSERT INTO `tag` (`name`)
+INSERT INTO `tag` (`id`, `name`)
 VALUES
-  ('写作'),
-  ('编程'),
-  ('总结'),
-  ('翻译'),
-  ('面试')
+  (1, '写作'),
+  (2, '编程'),
+  (3, '总结'),
+  (4, '翻译'),
+  (5, '面试')
 ON DUPLICATE KEY UPDATE
+  `name` = VALUES(`name`),
   `deleted` = 0;
 
 INSERT INTO `user` (`username`, `email`, `password`, `role`, `status`)

@@ -46,15 +46,6 @@ async function deletePrompt(req, res, next) {
   }
 }
 
-async function toggleLike(req, res, next) {
-  try {
-    const data = await promptService.togglePromptLike(Number(req.params.id), req.user);
-    res.json(success(data));
-  } catch (error) {
-    next(error);
-  }
-}
-
 async function toggleFavorite(req, res, next) {
   try {
     const data = await promptService.toggleFavorite(Number(req.params.id), req.user);
@@ -70,6 +61,5 @@ module.exports = {
   createPrompt,
   updatePrompt,
   deletePrompt,
-  toggleLike,
   toggleFavorite,
 };

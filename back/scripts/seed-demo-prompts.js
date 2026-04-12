@@ -1,6 +1,6 @@
 /**
  * 若 `prompt` 表当前无有效记录（deleted=0），则插入 20 条演示 Prompt，
- * 并随机关联已有 category / tag / ai_model（需先执行过 db:init 或存在基础目录数据）。
+ * 并随机关联已有 category（需先执行过 db:init 或存在基础目录数据）。
  * 用法：npm run db:seed-demo
  */
 const mysql = require('mysql2/promise');
@@ -171,12 +171,6 @@ async function main() {
       return;
     }
 
-    const [tagRows] = await conn.query('SELECT `id` FROM `tag` WHERE `deleted` = 0 ORDER BY `id` ASC');
-    const [modelRows] = await conn.query('SELECT `id` FROM `ai_model` WHERE `deleted` = 0 ORDER BY `id` ASC');
-
-    const tagIds = tagRows.map((r) => r.id);
-    const modelIds = modelRows.map((r) => r.id);
-
     await conn.beginTransaction();
 
     let inserted = 0;
@@ -194,28 +188,16 @@ async function main() {
         [d.title, d.summary, d.content, d.usageScenario, userId, categoryId],
       );
 
+      // 为演示数据挂 1～2 个标签（多对多 prompt_tag）
       const promptId = result.insertId;
+      const tagA = (i % 5) + 1;
+      const tagB = ((i + 2) % 5) + 1;
+      await conn.query(
+        'INSERT INTO `prompt_tag` (`prompt_id`, `tag_id`) VALUES (?, ?), (?, ?)',
+        [promptId, tagA, promptId, tagB],
+      );
+
       inserted += 1;
-
-      if (tagIds.length) {
-        const t1 = tagIds[i % tagIds.length];
-        const t2 = tagIds[(i + 1) % tagIds.length];
-        const uniqTags = t1 === t2 ? [t1] : [t1, t2];
-        for (const tid of uniqTags) {
-          await conn.query(
-            'INSERT INTO `prompt_tag` (`prompt_id`, `tag_id`, `deleted`) VALUES (?, ?, 0) ON DUPLICATE KEY UPDATE `deleted` = 0',
-            [promptId, tid],
-          );
-        }
-      }
-
-      if (modelIds.length) {
-        const m1 = modelIds[i % modelIds.length];
-        await conn.query(
-          'INSERT INTO `prompt_model` (`prompt_id`, `model_id`, `deleted`) VALUES (?, ?, 0) ON DUPLICATE KEY UPDATE `deleted` = 0',
-          [promptId, m1],
-        );
-      }
     }
 
     await conn.commit();

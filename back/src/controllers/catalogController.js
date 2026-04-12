@@ -19,15 +19,6 @@ async function listTags(req, res, next) {
   }
 }
 
-async function listModels(req, res, next) {
-  try {
-    const data = await catalogService.listModels();
-    res.json(success(data));
-  } catch (error) {
-    next(error);
-  }
-}
-
 async function createCategory(req, res, next) {
   try {
     const data = await catalogService.createCategory(req.body);
@@ -40,6 +31,5 @@ async function createCategory(req, res, next) {
 module.exports = {
   listCategories,
   listTags,
-  listModels,
   createCategory,
 };

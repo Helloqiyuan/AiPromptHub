@@ -1,4 +1,4 @@
-const { Category, Tag, AiModel } = require('../models');
+const { Category, Tag } = require('../models');
 
 async function listCategories() {
   const categories = await Category.findAll({
@@ -16,24 +16,10 @@ async function listCategories() {
 
 async function listTags() {
   const tags = await Tag.findAll({
-    where: {
-      deleted: false,
-    },
+    where: { deleted: false },
     order: [['name', 'ASC']],
   });
-
   return tags.map((item) => item.get({ plain: true }));
-}
-
-async function listModels() {
-  const models = await AiModel.findAll({
-    where: {
-      deleted: false,
-    },
-    order: [['name', 'ASC']],
-  });
-
-  return models.map((item) => item.get({ plain: true }));
 }
 
 async function createCategory(payload) {
@@ -50,6 +36,5 @@ async function createCategory(payload) {
 module.exports = {
   listCategories,
   listTags,
-  listModels,
   createCategory,
 };

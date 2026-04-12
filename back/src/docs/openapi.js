@@ -91,23 +91,6 @@
  *         sort:
  *           type: integer
  *           nullable: true
- *     Tag:
- *       type: object
- *       properties:
- *         id:
- *           type: integer
- *         name:
- *           type: string
- *     AiModel:
- *       type: object
- *       properties:
- *         id:
- *           type: integer
- *         name:
- *           type: string
- *         vendor:
- *           type: string
- *           nullable: true
  *     Prompt:
  *       type: object
  *       properties:
@@ -154,14 +137,30 @@
  *           $ref: '#/components/schemas/PromptAuthor'
  *         category:
  *           $ref: '#/components/schemas/Category'
+ *         tag:
+ *           type: object
+ *           nullable: true
+ *           description: 兼容字段，等价于 tags 的第一项
+ *           properties:
+ *             id:
+ *               type: integer
+ *             name:
+ *               type: string
  *         tags:
  *           type: array
+ *           description: 关联标签（多对多 prompt_tag）
  *           items:
- *             $ref: '#/components/schemas/Tag'
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: integer
+ *               name:
+ *                 type: string
  *         models:
  *           type: array
+ *           description: 兼容字段，当前恒为空数组
  *           items:
- *             $ref: '#/components/schemas/AiModel'
+ *             type: object
  *         liked:
  *           type: boolean
  *         favorited:
@@ -238,10 +237,6 @@
  *         adminCount:
  *           type: integer
  *         categoryCount:
- *           type: integer
- *         tagCount:
- *           type: integer
- *         modelCount:
  *           type: integer
  *         promptCount:
  *           type: integer
@@ -412,10 +407,7 @@
  *           type: integer
  *       - in: query
  *         name: tagId
- *         schema:
- *           type: integer
- *       - in: query
- *         name: modelId
+ *         description: 按标签筛选（Prompt 须包含该标签）
  *         schema:
  *           type: integer
  *       - in: query
@@ -454,20 +446,13 @@
  *                 type: integer
  *               tagIds:
  *                 type: array
+ *                 description: 标签 id 列表（多对多）；可与 tagId 二选一，优先 tagIds
  *                 items:
  *                   type: integer
- *               tags:
- *                 type: array
- *                 items:
- *                   type: string
- *               modelIds:
- *                 type: array
- *                 items:
- *                   type: integer
- *               modelNames:
- *                 type: array
- *                 items:
- *                   type: string
+ *               tagId:
+ *                 type: integer
+ *                 nullable: true
+ *                 description: 单个标签（兼容旧客户端）
  *     responses:
  *       200:
  *         description: 创建成功
@@ -521,18 +506,9 @@
  *                 type: array
  *                 items:
  *                   type: integer
- *               tags:
- *                 type: array
- *                 items:
- *                   type: string
- *               modelIds:
- *                 type: array
- *                 items:
- *                   type: integer
- *               modelNames:
- *                 type: array
- *                 items:
- *                   type: string
+ *               tagId:
+ *                 type: integer
+ *                 nullable: true
  *     responses:
  *       200:
  *         description: 更新成功
@@ -550,22 +526,6 @@
  *     responses:
  *       200:
  *         description: 删除成功
- *
- * /api/prompts/{id}/likes/toggle:
- *   post:
- *     tags: [Prompts]
- *     summary: 切换点赞状态
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: 点赞切换成功
  *
  * /api/prompts/{id}/favorites/toggle:
  *   post:
@@ -672,22 +632,6 @@
  *     responses:
  *       200:
  *         description: 创建成功
- *
- * /api/catalog/tags:
- *   get:
- *     tags: [Catalog]
- *     summary: 获取标签列表
- *     responses:
- *       200:
- *         description: 标签列表
- *
- * /api/catalog/models:
- *   get:
- *     tags: [Catalog]
- *     summary: 获取模型列表
- *     responses:
- *       200:
- *         description: 模型列表
  */
 
 /**
