@@ -3,30 +3,46 @@
 ## 目录结构
 
 - `back`：Express + MySQL 后端
-- `front`：Next.js 前端（Civitai 风格 + Aceternity UI 组件模式）
+- `front`：Vue 3 + Vite 前端
 - `docs-src` / `docs-extract`：原始文档与提取内容
 
-## 启动方式
-
-### 后端
+## 根目录一键命令
 
 ```bash
-npm --prefix back install
-npm --prefix back run db:init
-npm --prefix back run dev
+npm run back:install
+npm run back:db:init
+npm run back:dev
+npm run back:start
+npm run back:docs
+npm run front:install
+npm run front:dev
+npm run front:build
 ```
 
-`db:init` 会执行 `back/database/tables.sql` 与 `data.sql`（已含 100 条演示 Prompt 及封面 URL）。
+## Windows 一键脚本
 
-### 前端
+直接在项目根目录双击即可：
+
+- `init-back-db.bat`：初始化后端数据库
+- `start-back-dev.bat`：开发模式启动后端
+- `start-back.bat`：生产模式启动后端
+
+## 接口文档
+
+后端启动后可访问：
+
+- `http://127.0.0.1:3000/api-docs`
+- `http://127.0.0.1:3000/api-docs.json`
+
+导出静态 OpenAPI JSON：
 
 ```bash
-cp front/.env.local.example front/.env.local
-npm --prefix front install
-npm --prefix front run dev
+npm run back:docs
 ```
+
+导出文件：`back/swagger/openapi.json`
 
 ## 默认地址
 
 - 后端：`http://127.0.0.1:3000`
-- 前端：`http://127.0.0.1:5173`（开发端口在 `front/package.json` 的 `dev` 脚本中配置）
+- 前端：`http://127.0.0.1:5173`

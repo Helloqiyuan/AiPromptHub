@@ -54,27 +54,6 @@
  *         status:
  *           type: string
  *           enum: [active, disabled]
- *         deleted:
- *           type: boolean
- *         createTime:
- *           type: string
- *           format: date-time
- *         updateTime:
- *           type: string
- *           format: date-time
- *     PromptAuthor:
- *       type: object
- *       properties:
- *         id:
- *           type: integer
- *         username:
- *           type: string
- *         avatar:
- *           type: string
- *           nullable: true
- *         role:
- *           type: string
- *           nullable: true
  *     Category:
  *       type: object
  *       properties:
@@ -87,10 +66,15 @@
  *           nullable: true
  *         parentId:
  *           type: integer
- *           description: 父级分类 id，-1 表示根节点
  *         sort:
  *           type: integer
- *           nullable: true
+ *     Tag:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         name:
+ *           type: string
  *     Prompt:
  *       type: object
  *       properties:
@@ -104,7 +88,6 @@
  *         image:
  *           type: string
  *           nullable: true
- *           description: 封面图 URL（列表/卡片展示）
  *         content:
  *           type: string
  *         usageScenario:
@@ -129,47 +112,26 @@
  *         status:
  *           type: string
  *           enum: [published, pending, rejected, archived]
- *         deleted:
- *           type: boolean
- *         createTime:
- *           type: string
- *           format: date-time
- *         updateTime:
- *           type: string
- *           format: date-time
  *         author:
- *           $ref: '#/components/schemas/PromptAuthor'
+ *           type: object
  *         category:
  *           $ref: '#/components/schemas/Category'
  *         tag:
  *           type: object
  *           nullable: true
- *           description: 兼容字段，等价于 tags 的第一项
- *           properties:
- *             id:
- *               type: integer
- *             name:
- *               type: string
  *         tags:
  *           type: array
- *           description: 关联标签（多对多 prompt_tag）
  *           items:
- *             type: object
- *             properties:
- *               id:
- *                 type: integer
- *               name:
- *                 type: string
+ *             $ref: '#/components/schemas/Tag'
  *         models:
  *           type: array
- *           description: 兼容字段，当前恒为空数组
  *           items:
  *             type: object
  *         liked:
  *           type: boolean
  *         favorited:
  *           type: boolean
- *     PromptListResponse:
+ *     PromptPage:
  *       type: object
  *       properties:
  *         list:
@@ -194,23 +156,15 @@
  *           nullable: true
  *         content:
  *           type: string
- *         deleted:
- *           type: boolean
- *         createTime:
- *           type: string
- *           format: date-time
- *         updateTime:
- *           type: string
- *           format: date-time
  *         author:
- *           $ref: '#/components/schemas/PromptAuthor'
+ *           type: object
  *         replyUser:
- *           $ref: '#/components/schemas/PromptAuthor'
+ *           type: object
  *         children:
  *           type: array
  *           items:
  *             $ref: '#/components/schemas/Comment'
- *     CommentListResponse:
+ *     CommentPage:
  *       type: object
  *       properties:
  *         list:
@@ -219,20 +173,6 @@
  *             $ref: '#/components/schemas/Comment'
  *         pagination:
  *           $ref: '#/components/schemas/Pagination'
- *     Profile:
- *       allOf:
- *         - $ref: '#/components/schemas/User'
- *         - type: object
- *           properties:
- *             stats:
- *               type: object
- *               properties:
- *                 promptCount:
- *                   type: integer
- *                 favoriteCount:
- *                   type: integer
- *                 commentCount:
- *                   type: integer
  *     AdminStats:
  *       type: object
  *       properties:
@@ -261,10 +201,7 @@
  *     responses:
  *       200:
  *         description: 服务正常
- */
-
-/**
- * @openapi
+ *
  * /api/users/register:
  *   post:
  *     tags: [Users]
@@ -288,6 +225,7 @@
  *                 type: string
  *               phone:
  *                 type: string
+ *                 nullable: true
  *     responses:
  *       200:
  *         description: 注册成功
@@ -311,7 +249,7 @@
  *                 type: string
  *     responses:
  *       200:
- *         description: 登录成功并返回 JWT
+ *         description: 登录成功，返回 token 和用户信息
  *
  * /api/users/me:
  *   get:
@@ -338,12 +276,16 @@
  *                 type: string
  *               email:
  *                 type: string
+ *                 nullable: true
  *               phone:
  *                 type: string
+ *                 nullable: true
  *               avatar:
  *                 type: string
+ *                 nullable: true
  *               bio:
  *                 type: string
+ *                 nullable: true
  *     responses:
  *       200:
  *         description: 更新成功
@@ -363,6 +305,22 @@
  *         name: pageSize
  *         schema:
  *           type: integer
+ *       - in: query
+ *         name: keyword
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: categoryId
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: tagId
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: parentCategoryId
+ *         schema:
+ *           type: integer
  *     responses:
  *       200:
  *         description: 我的 Prompt 分页数据
@@ -373,6 +331,15 @@
  *     summary: 获取我的收藏列表
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
  *     responses:
  *       200:
  *         description: 我的收藏分页数据
@@ -383,17 +350,26 @@
  *     summary: 获取我的评论列表
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
  *     responses:
  *       200:
  *         description: 我的评论分页数据
  */
-
 /**
  * @openapi
  * /api/prompts:
  *   get:
  *     tags: [Prompts]
  *     summary: 获取 Prompt 列表
+ *     description: 未登录默认只返回 published 状态，管理员可结合 status 参数筛选。
  *     parameters:
  *       - in: query
  *         name: page
@@ -413,13 +389,17 @@
  *           type: integer
  *       - in: query
  *         name: tagId
- *         description: 按标签筛选（Prompt 须包含该标签）
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: parentCategoryId
  *         schema:
  *           type: integer
  *       - in: query
  *         name: status
  *         schema:
  *           type: string
+ *           enum: [published, pending, rejected, archived]
  *     responses:
  *       200:
  *         description: Prompt 分页数据
@@ -440,25 +420,33 @@
  *                 type: string
  *               summary:
  *                 type: string
+ *                 nullable: true
+ *               image:
+ *                 type: string
+ *                 nullable: true
  *               content:
  *                 type: string
  *               usageScenario:
  *                 type: string
+ *                 nullable: true
  *               exampleInput:
  *                 type: string
+ *                 nullable: true
  *               exampleOutput:
  *                 type: string
+ *                 nullable: true
  *               categoryId:
  *                 type: integer
+ *               status:
+ *                 type: string
+ *                 enum: [published, pending, rejected, archived]
  *               tagIds:
  *                 type: array
- *                 description: 标签 id 列表（多对多）；可与 tagId 二选一，优先 tagIds
  *                 items:
  *                   type: integer
  *               tagId:
  *                 type: integer
  *                 nullable: true
- *                 description: 单个标签（兼容旧客户端）
  *     responses:
  *       200:
  *         description: 创建成功
@@ -498,16 +486,26 @@
  *                 type: string
  *               summary:
  *                 type: string
+ *                 nullable: true
+ *               image:
+ *                 type: string
+ *                 nullable: true
  *               content:
  *                 type: string
  *               usageScenario:
  *                 type: string
+ *                 nullable: true
  *               exampleInput:
  *                 type: string
+ *                 nullable: true
  *               exampleOutput:
  *                 type: string
+ *                 nullable: true
  *               categoryId:
  *                 type: integer
+ *               status:
+ *                 type: string
+ *                 enum: [published, pending, rejected, archived]
  *               tagIds:
  *                 type: array
  *                 items:
@@ -520,7 +518,7 @@
  *         description: 更新成功
  *   delete:
  *     tags: [Prompts]
- *     summary: 删除 Prompt（逻辑删除）
+ *     summary: 删除 Prompt
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -548,10 +546,23 @@
  *     responses:
  *       200:
  *         description: 收藏切换成功
- */
-
-/**
- * @openapi
+ *
+ * /api/prompts/{id}/likes/toggle:
+ *   post:
+ *     tags: [Prompts]
+ *     summary: 切换点赞状态
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: 点赞切换成功
+ *
  * /api/comments:
  *   post:
  *     tags: [Comments]
@@ -572,6 +583,7 @@
  *                 type: string
  *               parentId:
  *                 type: integer
+ *                 description: 回复时传父评论 id
  *     responses:
  *       200:
  *         description: 评论创建成功
@@ -593,7 +605,8 @@
  * /api/comments/{id}:
  *   delete:
  *     tags: [Comments]
- *     summary: 删除评论（支持递归删除回复）
+ *     summary: 删除评论
+ *     description: 支持递归删除当前评论及其所有子回复。
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -606,7 +619,6 @@
  *       200:
  *         description: 删除成功
  */
-
 /**
  * @openapi
  * /api/catalog/categories:
@@ -619,6 +631,7 @@
  *   post:
  *     tags: [Catalog]
  *     summary: 创建分类
+ *     description: 仅管理员可访问。
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -633,15 +646,24 @@
  *                 type: string
  *               description:
  *                 type: string
+ *                 nullable: true
+ *               parentId:
+ *                 type: integer
+ *                 description: 根分类可传 -1
  *               sort:
  *                 type: integer
  *     responses:
  *       200:
  *         description: 创建成功
- */
-
-/**
- * @openapi
+ *
+ * /api/catalog/tags:
+ *   get:
+ *     tags: [Catalog]
+ *     summary: 获取标签列表
+ *     responses:
+ *       200:
+ *         description: 标签列表
+ *
  * /api/admin/stats:
  *   get:
  *     tags: [Admin]
@@ -668,9 +690,26 @@
  *         schema:
  *           type: integer
  *       - in: query
+ *         name: keyword
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: categoryId
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: tagId
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: parentCategoryId
+ *         schema:
+ *           type: integer
+ *       - in: query
  *         name: status
  *         schema:
  *           type: string
+ *           enum: [published, pending, rejected, archived]
  *     responses:
  *       200:
  *         description: 后台 Prompt 分页数据
@@ -678,7 +717,7 @@
  * /api/admin/prompts/{id}/status:
  *   patch:
  *     tags: [Admin]
- *     summary: 审核或变更 Prompt 状态
+ *     summary: 审核或更新 Prompt 状态
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -741,10 +780,12 @@
  *         name: role
  *         schema:
  *           type: string
+ *           enum: [user, admin, super_admin]
  *       - in: query
  *         name: status
  *         schema:
  *           type: string
+ *           enum: [active, disabled]
  *     responses:
  *       200:
  *         description: 用户分页数据
@@ -753,6 +794,7 @@
  *   patch:
  *     tags: [Admin]
  *     summary: 修改用户角色
+ *     description: 仅超级管理员可访问。
  *     security:
  *       - bearerAuth: []
  *     parameters:

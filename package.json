@@ -1,0 +1,14 @@
+{
+  "name": "ai-prompt-hub-workspace",
+  "private": true,
+  "scripts": {
+    "back:install": "npm --prefix back install",
+    "back:db:init": "npm --prefix back run db:init",
+    "back:docs": "npm --prefix back run docs:build",
+    "back:dev": "npm --prefix back run dev",
+    "back:start": "npm --prefix back start",
+    "front:install": "npm --prefix front install",
+    "front:dev": "npm --prefix front run dev",
+    "front:build": "npm --prefix front run build"
+  }
+}
