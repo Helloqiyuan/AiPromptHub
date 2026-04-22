@@ -68,7 +68,7 @@ ON DUPLICATE KEY UPDATE
   `deleted` = 0;
 
 INSERT INTO `user` (`id`, `username`, `email`, `password`, `role`, `status`)
-VALUES (1, 'superadmin', 'superadmin@local.ai-prompt-hub', '$2a$10$XXrwTkA9ZTrDoigTXF4g.ezX0Di8hu/T7bRdJyADi7qav9a8xWfjW', 'super_admin', 'active')
+VALUES (1, 'superadmin', 'superadmin@local.aiprompthub.com', '$2a$10$XXrwTkA9ZTrDoigTXF4g.ezX0Di8hu/T7bRdJyADi7qav9a8xWfjW', 'super_admin', 'active')
 ON DUPLICATE KEY UPDATE
   `password` = VALUES(`password`),
   `role` = VALUES(`role`),
@@ -391,3 +391,4 @@ INSERT INTO `prompt_tag` (`prompt_id`, `tag_id`) VALUES
 ON DUPLICATE KEY UPDATE `prompt_id` = VALUES(`prompt_id`), `tag_id` = VALUES(`tag_id`);
 
 ALTER TABLE `prompt` AUTO_INCREMENT = 101;
+

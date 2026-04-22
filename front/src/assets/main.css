@@ -1,0 +1,74 @@
+:root {
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', 'Noto Serif SC', 'Source Han Serif SC', serif;
+  --font-body: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --color-ink: #40291c;
+  --color-muted: #7f6857;
+  --color-accent: #9f6f47;
+  --color-accent-strong: #835636;
+  --color-bg: #efe2d0;
+  --color-surface: #fffaf4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background:
+    radial-gradient(circle at top left, rgba(255, 247, 236, 0.95), transparent 26%),
+    radial-gradient(circle at bottom right, rgba(209, 178, 146, 0.25), transparent 24%),
+    linear-gradient(180deg, #f3e7d6 0%, #eadac6 100%);
+  color: var(--color-ink);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid rgba(162, 111, 69, 0.28);
+  outline-offset: 2px;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+.page-shell {
+  width: min(1440px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 24px 0 48px;
+}
+
+@media (max-width: 640px) {
+  .page-shell {
+    width: min(100vw - 20px, 100%);
+    padding: 18px 0 34px;
+  }
+}
